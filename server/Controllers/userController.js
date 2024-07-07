@@ -1,84 +1,87 @@
-const userModel = require("../Models/userModel");
 const bcrypt = require("bcrypt");
-const validator = require("validator");
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
+const validator = require("validator");
+const userModel = require("../Models/userModel");
 
 const createToken = (_id) => {
-    const jwtkey = process.env.JWT_SECRET_KEY;
-    return jwt.sign({ _id }, jwtkey, { expiresIn: "3d" });
+  const jwtSecretKey = process.env.JWT_SECRET_KEY;
+
+  return jwt.sign({ _id }, jwtSecretKey, { expiresIn: "3d" });
 };
 
 const registerUser = async (req, res) => {
-    try {
-        const { name, email, password } = req.body;
+  const { name, email, password } = req.body;
 
-        if (!name || !email || !password) {
-            return res.status(400).json({ error: "Todos los campos son requeridos" });
-        }
+  try {
+    let user = await userModel.findOne({ email });
+    if (user) return res.status(400).json("El usuario ya existe.");
 
-        if (!validator.isEmail(email)) {
-            return res.status(400).json({ error: "Debe ser un correo válido" });
-        }
+    user = new userModel({ name, email, password });
 
-        if (!validator.isStrongPassword(password)) {
-            return res.status(400).json({
-                error: "La contraseña debe tener al menos 8 caracteres, incluyendo una letra mayúscula, un número y un símbolo"
-            });
-        }
+    if (!name || !email || !password)
+      return res.status(400).json("Todos los campos son obligatorios.");
 
-        let user = await userModel.findOne({ email });
+    if (!validator.isEmail(email))
+      return res.status(400).json("El correo electrónico debe ser válido.");
 
-        if (user) {
-            return res.status(400).json({ error: "Este usuario ya existe con este Email" });
-        }
+    if (!validator.isStrongPassword(password))
+      return res.status(400).json("La contraseña debe ser segura.");
 
-        user = new userModel({ name, email, password });
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(user.password, salt);
 
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
+    await user.save();
 
-        await user.save();
+    const token = createToken(user._id);
 
-        const token = createToken(user._id);
-
-        res.status(200).json({ _id: user._id, name, email, token });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Error interno del servidor" });
-    }
+    res.status(200).json({ _id: user._id, name, email, token });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(error);
+  }
 };
 
 const loginUser = async (req, res) => {
-    const { email, password } = req.body;
-    try {
-        let user = await userModel.findOne({ email });
+  const { email, password } = req.body;
 
-        if (!user) return res.status(400).json("Correo o contraseña invalida")
+  try {
+    let user = await userModel.findOne({ email });
 
-        const IsValidPassword = await bcrypt.compare(password, user.password)
+    if (!user) return res.status(400).json("Correo electrónico o contraseña no válidos.");
 
-        if (!IsValidPassword) return res.status(400).json("Correo o contraseña invalida")
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword)
+      return res.status(400).json("Correo electrónico o contraseña no válidos.");
 
-        const token = createToken(user._id);
+    const token = createToken(user._id);
 
-        res.status(200).json({ _id: user._id, name: user.name, email, token });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Error interno del servidor" });
-    }
-
+    res.status(200).json({ _id: user._id, name: user.name, email, token });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(error);
+  }
 };
 
 const findUser = async (req, res) => {
-    const userId = req.params.userId;
-    try {
-        const user = await userModel.findById(userId)
+  const userId = req.params.userId;
 
-        res.status(200).json(user);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Error interno del servidor" });
-    }
-}
-module.exports = { registerUser, loginUser, findUser };
+  try {
+    const user = await userModel.findById(userId);
+
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
+const getUsers = async (req, res) => {
+  try {
+    const users = await userModel.find();
+
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
+module.exports = { registerUser, loginUser, findUser, getUsers };
