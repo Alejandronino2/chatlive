@@ -9,7 +9,7 @@ SERVER_PID=$!
 # Navegar al directorio de los sockets, instalar dependencias y ejecutar nodemon
 cd ../socket
 npm install
-npm start &
+nodemon &
 SOCKET_PID=$!
 
 # Navegar al directorio del cliente, instalar dependencias y ejecutar npm run dev
