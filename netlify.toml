@@ -1,11 +1,3 @@
 [build]
-  # Configuración y ejecución del servidor
-  command = "cd server && npm install && npm start"
-  functions = "server/src/index.js"  # Punto de entrada del servidor
-
-  # Configuración y ejecución de los sockets
-  command = "cd socket && npm install && npm start"
-
-  # Configuración y ejecución del cliente
-  command = "cd client && npm install && npm run dev"
-  publish = "client/public"  # Ruta donde están los archivos estáticos del cliente
+  command = "./build.sh"
+  publish = "client/build"  # Ajusta la ruta según la estructura de tu proyecto
